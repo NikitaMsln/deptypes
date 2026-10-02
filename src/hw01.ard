@@ -62,36 +62,36 @@
 \open Nat \hiding (-, div) -- Здесь лежат + и *
 
 \func \infixr 8 ^ (x y : Nat): Nat \elim y
-  | zero => suc zero
+  | zero => 1
   | suc n => (x ^ n) * x
 
 \func fac (x : Nat): Nat \elim x
-  | zero => suc zero
+  | zero => 1
   | suc n => fac n * suc n
 
 -- 7. Определите mod и gcd
 
 \func mod (x y : Nat): Nat \elim y
   | zero => zero
-  | suc n => eval x n (suc x)
+  | n => eval x n (suc x)
   \where {
-    \func eval (x suby cnt : Nat): Nat \elim cnt
+    \func eval (x y cnt : Nat): Nat \elim cnt
       | zero => zero
-      | suc k => \case x < suc suby \with {
+      | suc k => \case x < y \with {
         | true => x
-        | false => eval (x - suc suby) suby k
+        | false => eval (x - y) y k
       }
   }
 
 \func gcd (x y : Nat): Nat \elim x, y
   | zero, _ => zero
   | _, zero => zero
-  | suc x', suc y' => eval x' y' (x' + y' + 2)
+  | x, y => eval x y (x + y)
   \where {
-    \func eval (x' y' cnt : Nat): Nat \elim cnt
+    \func eval (x y cnt : Nat): Nat \elim cnt
       | zero => zero
-      | suc k => \case mod (suc y') (suc x') \with {
-        | zero => suc x'
-        | suc y'' => eval y'' x' k
+      | suc k => \case mod y x \with {
+        | zero => x
+        | y' => eval y' x k
       }
   }
