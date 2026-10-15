@@ -5,11 +5,17 @@
 
 -- 1. Чему равно fileTest (в нормальной форме)? Докажите это
 
+\func fileTestForm : fileTest = (17, 8, 13, 55, 18, 21) => idp
+
 -- 2. Чему равно M5.t''' (в нормальной форме)? Докажите это
+
+\func M5t'''Form : M5.t''' = ((82, 42, 61, 82, 34, 42, 61, 29), 25, (42, 29)) => idp
 
 -- 3. Докажите ассоциативность ++
 
-\func ++-assoc {A : \Type} (xs ys zs : List A) : (xs ++ ys) ++ zs = xs ++ (ys ++ zs) => {?}
+\func ++-assoc {A : \Type} (xs ys zs : List A) : (xs ++ ys) ++ zs = xs ++ (ys ++ zs) \elim xs
+  | nil => idp
+  | :: x xs => pmap (:: x) (++-assoc xs ys zs)
 
 
 \func sum (xs : List Nat) : Nat
@@ -23,29 +29,79 @@
   | :: x xs => reverse xs ++ x :: nil
 
 -- Это утверждение будет полезно для доказательства
-\func sum++ (xs ys : List Nat) : sum (xs ++ ys) = sum xs + sum ys => {?}
+\func sum++ (xs ys : List Nat) : sum (xs ++ ys) = sum xs + sum ys \elim xs
+  | nil => idp
+  | :: x xs => pmap (x +) (sum++ xs ys) *> inv (+-assoc x (sum xs) (sum ys))
 
-\func sum-reverse (xs : List Nat) : sum (reverse xs) = sum xs => {?}
+\func sum-reverse (xs : List Nat) : sum (reverse xs) = sum xs \elim xs
+  | nil => idp
+  | :: x xs =>
+    sum++ (reverse xs) (x :: nil) *>
+    pmap (\lam a => a + x) (sum-reverse xs) *>
+    +-comm (sum xs) x
 
 -- 5. Докажите дистрибутивность умножения над сложением для натуральных чисел
 
-\func rdistr (n m k : Nat) : (m + k) * n = m * n + k * n => {?}
+\func rdistr (n m k : Nat) : (m + k) * n = m * n + k * n \elim n
+  | 0 => idp
+  | suc n => pmap (\lam p => p + (m + k)) (rdistr n m k) *> +-transform (m * n) (k * n) m k
+    \where {
+      \func +-transform (a b c d : Nat): (a + b) + (c + d) = (a + c) + (b + d) =>
+        +-assoc a b (c + d) *>
+        pmap (\lam p => a + p) (
+          inv (+-assoc b c d) *>
+          pmap (\lam p => p + d) (+-comm b c) *>
+          +-assoc c b d
+        ) *> -- a + (b + (c + d)) = a + (c + (b + d))
+        inv (+-assoc a c (b + d))
+    }
 
-\func ldistr (n m k : Nat) : n * (m + k) = n * m + n * k => {?}
+\func *-comm (n m : Nat) : n * m = m * n \elim m
+  | 0 => inv (zero* n)
+  | suc m =>
+    pmap (\lam p => p + n) (*-comm n m) *>
+    inv (*-suc m n)
+  \where {
+    \func zero* (n : Nat) : 0 * n = 0
+      | 0 => idp
+      | suc n => zero* n
+    \func *-suc (n m : Nat) : (n + 1) * m = n * m + m \elim m
+      | 0 => idp
+      | suc m =>
+        pmap (\lam p => p + n + 1) (*-suc n m) *>
+        pmap suc (+-assoc (n * m) m n) *>
+        pmap (\lam p => (n * m + p) + 1) (+-comm m n) *>
+        pmap suc (inv (+-assoc (n * m) n m))
+  }
+
+\func ldistr (n m k : Nat) : n * (m + k) = n * m + n * k =>
+  *-comm n (m + k) *>
+  rdistr n m k *>
+  pmap (\lam p => p + k * n) (*-comm m n) *>
+  pmap (\lam p => n * m + p) (*-comm k n)
 
 -- 6. Определите конгруэнтность для функций двух аргументов через transport
 --    Можно использовать любые функции, определенные через transport
 
 \func pmap2 {A B C : \Type} (f : A -> B -> C) {a a' : A} (p : a = a') {b b' : B} (q : b = b')
-  : f a b = f a' b' => {?}
+  : f a b = f a' b' =>
+  transport
+    (\lam x => f a b = f a' x)
+    q
+    (transport (\lam x => f a b = f x b) p idp)
 
 -- 7. Докажите, что transport выражается через pmap и repl и наоборот
 
 -- repl говорит, что если у нас есть два равных типа, то у нас есть функция из одного во второй
 -- Определите repl через transport
 
-\func repl {A B : \Type} (p : A = B) (a : A) : B => {?}
+\func repl {A B : \Type} (p : A = B) (a : A) : B =>
+  (transport (\lam x => A -> x) p (\lam x => x)) a
+
+\func pmap' {A B : \Type} (f : A -> B) {a a' : A} (p : a = a') : f a = f a' =>
+  transport (\lam x => f a = f x) p idp
 
 -- Определите transport через repl и pmap
 
-\func transport' {A : \Type} (B : A -> \Type) {a a' : A} (p : a = a') (b : B a) : B a' => {?}
+\func transport' {A : \Type} (B : A -> \Type) {a a' : A} (p : a = a') (b : B a) : B a' =>
+  repl (pmap B p) b
